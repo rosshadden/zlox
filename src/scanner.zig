@@ -1,5 +1,7 @@
+const std = @import("std");
+
 pub const Token = struct {
-  pub const Type = enum {
+  pub const Kind = enum {
     // 1 char
     left_paren, right_paren,
     left_brace, right_brace,
@@ -21,8 +23,54 @@ pub const Token = struct {
     eof,
   };
 
-  pub const @"type": Type = undefined;
-  pub const lexeme: []const u8 = undefined;
-  pub const literal: struct {} = undefined;
-  pub const line: usize = undefined;
+  pub const Literal = struct {
+  };
+
+  kind: Kind,
+  lexeme: []const u8,
+  literal: struct {},
+  line: usize,
+};
+
+pub const Scanner = struct {
+  const Self = @This();
+
+  source: []const u8,
+  tokens: std.ArrayList(Token),
+  start: usize,
+  current: usize,
+  line: usize,
+
+  pub fn scanTokens(self: *Self) std.ArrayList(Token) {
+    while (!self.isAtEnd()) {
+      self.start = self.current;
+      self.scanToken();
+    }
+
+    self.tokens.addOne(Token{
+      .kind = .eof,
+      .lexeme = "",
+      .literal = null,
+      .line = self.line,
+    });
+    return self.tokens;
+  }
+
+  fn scanToken(self: *Self) void {
+    const char: u8 = self.advance();
+    try std.debug.print("{}\n", .{ char });
+  }
+
+  fn isAtEnd(self: *Self) bool {
+    return self.current >= self.source.len;
+  }
+
+  fn advance(self: *Self) u8 {
+    return self.current >= self.source.len;
+  }
+
+  fn addToken(self: *Self, kind: Token.Kind, literal: ?Token.Literal) void {
+    try std.debug.print("{}{}\n", .{ kind, literal });
+    return self.current >= self.source.len;
+  }
 };
