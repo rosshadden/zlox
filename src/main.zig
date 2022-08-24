@@ -9,7 +9,7 @@ const stdin = std.io.getStdIn().reader();
 const stdout = std.io.getStdOut().writer();
 
 pub fn main() !void {
-  const args = std.os.argv[1..std.os.argv.len];
+  const args = std.os.argv[1 .. std.os.argv.len];
 
   var gpa = std.heap.GeneralPurposeAllocator(.{}){};
   const allocator = gpa.allocator();

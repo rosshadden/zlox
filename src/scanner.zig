@@ -51,6 +51,7 @@ pub const Scanner = struct {
       '>' => addToken(if (match('=')) .greater_equal else .greater),
       '/' => {
         if (match('/')) {
+          // a comment goes until the end of the line, pal
           while (peek() != '\n' and !isAtEnd()) advance();
         } else {
           addToken(.slash);
@@ -63,10 +64,52 @@ pub const Scanner = struct {
         self.line += 1;
       },
 
+      // woke literals
+      '"' => string(),
+      '0' ... '9' => number(),
+
       else => {
         helpers.err(self.line, "Unexpected character.");
       }
     }
+  }
+
+  // fn identifier(self: *Self) void {
+  // }
+
+  fn number(self: *Self) void {
+    while (std.ascii.isDigit(peek())) advance();
+
+    // look for a fractional part
+    if (peek() == '.' and std.ascii.isDigit(peekNext())) {
+      // consume the '.'
+      advance();
+
+      while (std.ascii.isDigit(peek())) advance();
+    }
+
+    const value = std.fmt.parseFloat(f64, self.source[self.start .. self.current]);
+    addToken(.number, value);
+  }
+
+  fn string(self: *Self) void {
+    while (peek() != '"' and !isAtEnd()) {
+      // multiline strings
+      if (peek() == '\n') self.line += 1;
+      advance();
+    }
+
+    if (isAtEnd()) {
+      helpers.err(self.line, "Unterminated string.");
+      return;
+    }
+
+    // the closing '"'
+    advance();
+
+    // trim the sourrounding quotes
+    const value = self.source[self.start + 1 .. self.current - 1];
+    addToken(.string, value);
   }
 
   fn match(self: *Self, expected: u8) bool {
@@ -82,6 +125,11 @@ pub const Scanner = struct {
     return self.source[self.current];
   }
 
+  fn peekNext(self: *Self) u8 {
+    if (self.current + 1 >= self.source.len) return null;
+    return self.source[self.current + 1];
+  }
+
   fn isAtEnd(self: *Self) bool {
     return self.current >= self.source.len;
   }
@@ -93,7 +141,7 @@ pub const Scanner = struct {
   }
 
   fn addToken(self: *Self, kind: .Kind, literal: ?tokens.Literal) void {
-    const text = self.source[self.start..self.current];
+    const text = self.source[self.start .. self.current];
     self.tokens.append(tokens.Token{
       .kind = kind,
       .lexeme = text,
