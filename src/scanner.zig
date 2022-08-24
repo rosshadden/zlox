@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const helpers = @import("./helpers.zig");
 const tokens = @import("./tokens.zig");
 
 pub const Scanner = struct {
@@ -29,6 +30,7 @@ pub const Scanner = struct {
 
   fn scanToken(self: *Self) void {
     const char = self.advance();
+    // TODO: unroll into an expression
     switch (char) {
       '(' => addToken(.left_paren),
       ')' => addToken(.right_paren),
@@ -41,7 +43,7 @@ pub const Scanner = struct {
       ';' => addToken(.semicolon),
       '*' => addToken(.star),
       else => {
-        std.debug.print("TODO: make error method accessible from here", .{});
+        helpers.err(self.line, "Unexpected character.");
       }
     }
   }
