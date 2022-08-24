@@ -13,9 +13,9 @@ pub const Scanner = struct {
   line: usize,
 
   pub fn scanTokens(self: *Self) std.ArrayList(tokens.Token) {
-    while (!self.isAtEnd()) {
+    while (!isAtEnd()) {
       self.start = self.current;
-      self.scanToken();
+      scanToken();
     }
 
     // self.tokens.append(tokens.Token{
@@ -24,14 +24,15 @@ pub const Scanner = struct {
     //   .literal = null,
     //   .line = self.line,
     // });
-    self.addToken(.eof);
+    addToken(.eof);
     return self.tokens;
   }
 
   fn scanToken(self: *Self) void {
-    const char = self.advance();
+    const char = advance();
     // TODO: unroll into an expression
     switch (char) {
+      // 1 char
       '(' => addToken(.left_paren),
       ')' => addToken(.right_paren),
       '{' => addToken(.left_brace),
@@ -42,10 +43,43 @@ pub const Scanner = struct {
       '+' => addToken(.plus),
       ';' => addToken(.semicolon),
       '*' => addToken(.star),
+
+      // 2 char
+      '!' => addToken(if (match('=')) .bang_equal else .bang),
+      '=' => addToken(if (match('=')) .equal_equal else .equal),
+      '<' => addToken(if (match('=')) .less_equal else .less),
+      '>' => addToken(if (match('=')) .greater_equal else .greater),
+      '/' => {
+        if (match('/')) {
+          while (peek() != '\n' and !isAtEnd()) advance();
+        } else {
+          addToken(.slash);
+        }
+      },
+
+      // whitespace
+      ' ', '\r', '\t' => {},
+      '\n' => {
+        self.line += 1;
+      },
+
       else => {
         helpers.err(self.line, "Unexpected character.");
       }
     }
+  }
+
+  fn match(self: *Self, expected: u8) bool {
+    if (isAtEnd()) return false;
+    if (self.source[self.current] != expected) return false;
+
+    self.current += 1;
+    return true;
+  }
+
+  fn peek(self: *Self) u8 {
+    if (isAtEnd()) return null;
+    return self.source[self.current];
   }
 
   fn isAtEnd(self: *Self) bool {
