@@ -13,9 +13,9 @@ pub const Scanner = struct {
   line: usize,
 
   pub fn scanTokens(self: *Self) std.ArrayList(tokens.Token) {
-    while (!isAtEnd()) {
+    while (!self.isAtEnd()) {
       self.start = self.current;
-      scanToken();
+      self.scanToken();
     }
 
     // self.tokens.append(tokens.Token{
@@ -24,37 +24,37 @@ pub const Scanner = struct {
     //   .literal = null,
     //   .line = self.line,
     // });
-    addToken(.eof);
+    self.addToken(.eof);
     return self.tokens;
   }
 
   fn scanToken(self: *Self) void {
-    const char = advance();
+    const char = self.advance();
     // TODO: unroll into an expression
     switch (char) {
       // 1 char
-      '(' => addToken(.left_paren),
-      ')' => addToken(.right_paren),
-      '{' => addToken(.left_brace),
-      '}' => addToken(.right_brace),
-      ',' => addToken(.comma),
-      '.' => addToken(.dot),
-      '-' => addToken(.minus),
-      '+' => addToken(.plus),
-      ';' => addToken(.semicolon),
-      '*' => addToken(.star),
+      '(' => self.addToken(.left_paren),
+      ')' => self.addToken(.right_paren),
+      '{' => self.addToken(.left_brace),
+      '}' => self.addToken(.right_brace),
+      ',' => self.addToken(.comma),
+      '.' => self.addToken(.dot),
+      '-' => self.addToken(.minus),
+      '+' => self.addToken(.plus),
+      ';' => self.addToken(.semicolon),
+      '*' => self.addToken(.star),
 
       // 2 char
-      '!' => addToken(if (match('=')) .bang_equal else .bang),
-      '=' => addToken(if (match('=')) .equal_equal else .equal),
-      '<' => addToken(if (match('=')) .less_equal else .less),
-      '>' => addToken(if (match('=')) .greater_equal else .greater),
+      '!' => self.addToken(if (self.match('=')) .bang_equal else .bang),
+      '=' => self.addToken(if (self.match('=')) .equal_equal else .equal),
+      '<' => self.addToken(if (self.match('=')) .less_equal else .less),
+      '>' => self.addToken(if (self.match('=')) .greater_equal else .greater),
       '/' => {
-        if (match('/')) {
+        if (self.match('/')) {
           // a comment goes until the end of the line, pal
-          while (peek() != '\n' and !isAtEnd()) advance();
+          while (self.peek() != '\n' and !self.isAtEnd()) self.advance();
         } else {
-          addToken(.slash);
+          self.addToken(.slash);
         }
       },
 
@@ -65,8 +65,9 @@ pub const Scanner = struct {
       },
 
       // woke literals
-      '"' => string(),
-      '0' ... '9' => number(),
+      '"' => self.string(),
+      '0'...'9' => self.number(),
+      'a'...'z', 'A'...'Z', '_' => self.identifier(),
 
       else => {
         helpers.err(self.line, "Unexpected character.");
@@ -74,46 +75,48 @@ pub const Scanner = struct {
     }
   }
 
-  // fn identifier(self: *Self) void {
-  // }
+  fn identifier(self: *Self) void {
+    while (isAlphaNumeric(self.peek())) self.advance();
+    self.addToken(.identifier);
+  }
 
   fn number(self: *Self) void {
-    while (std.ascii.isDigit(peek())) advance();
+    while (std.ascii.isDigit(peek())) self.advance();
 
     // look for a fractional part
-    if (peek() == '.' and std.ascii.isDigit(peekNext())) {
+    if (self.peek() == '.' and std.ascii.isDigit(self.peekNext())) {
       // consume the '.'
-      advance();
+      self.advance();
 
-      while (std.ascii.isDigit(peek())) advance();
+      while (std.ascii.isDigit(peek())) self.advance();
     }
 
     const value = std.fmt.parseFloat(f64, self.source[self.start .. self.current]);
-    addToken(.number, value);
+    self.addToken(.number, value);
   }
 
   fn string(self: *Self) void {
-    while (peek() != '"' and !isAtEnd()) {
+    while (self.peek() != '"' and !self.isAtEnd()) {
       // multiline strings
-      if (peek() == '\n') self.line += 1;
-      advance();
+      if (self.peek() == '\n') self.line += 1;
+      self.advance();
     }
 
-    if (isAtEnd()) {
+    if (self.isAtEnd()) {
       helpers.err(self.line, "Unterminated string.");
       return;
     }
 
     // the closing '"'
-    advance();
+    self.advance();
 
     // trim the sourrounding quotes
     const value = self.source[self.start + 1 .. self.current - 1];
-    addToken(.string, value);
+    self.addToken(.string, value);
   }
 
   fn match(self: *Self, expected: u8) bool {
-    if (isAtEnd()) return false;
+    if (self.isAtEnd()) return false;
     if (self.source[self.current] != expected) return false;
 
     self.current += 1;
@@ -121,13 +124,17 @@ pub const Scanner = struct {
   }
 
   fn peek(self: *Self) u8 {
-    if (isAtEnd()) return null;
+    if (self.isAtEnd()) return null;
     return self.source[self.current];
   }
 
   fn peekNext(self: *Self) u8 {
     if (self.current + 1 >= self.source.len) return null;
     return self.source[self.current + 1];
+  }
+
+  fn isAlphaNumeric(char: u8) bool {
+    return std.ascii.isAlNum(char) or char == '_';
   }
 
   fn isAtEnd(self: *Self) bool {
