@@ -27,9 +27,13 @@ pub const Kind = enum {
   identifier, string, number,
 
   // keywords
-  @"and", class, @"else", false, fun, @"for", @"if", nil, @"or",
-  print, @"return", super, this, true, @"var", @"while",
+  @"and", @"class", @"else", @"false", @"fun", @"for", @"if", @"nil", @"or",
+  @"print", @"return", @"super", @"this", @"true", @"var", @"while",
 
   eof,
 };
 
+pub const keywords = [_]Kind{
+  .@"and", .@"class", .@"else", .@"false", .@"fun", .@"for", .@"if", .@"nil", .@"or",
+  .@"print", .@"return", .@"super", .@"this", .@"true", .@"var", .@"while",
+};

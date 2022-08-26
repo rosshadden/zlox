@@ -18,12 +18,6 @@ pub const Scanner = struct {
       self.scanToken();
     }
 
-    // self.tokens.append(tokens.Token{
-    //   .kind = .eof,
-    //   .lexeme = "",
-    //   .literal = null,
-    //   .line = self.line,
-    // });
     self.addToken(.eof);
     return self.tokens;
   }
@@ -77,14 +71,18 @@ pub const Scanner = struct {
 
   fn identifier(self: *Self) void {
     while (isAlphaNumeric(self.peek())) self.advance();
-    self.addToken(.identifier);
+
+    // TODO: abstract getting current lexeme
+    const text = self.source[self.start .. self.current];
+    const kind: tokens.Kind = identifierType(text);
+    self.addToken(kind);
   }
 
   fn number(self: *Self) void {
     while (std.ascii.isDigit(peek())) self.advance();
 
     // look for a fractional part
-    if (self.peek() == '.' and std.ascii.isDigit(self.peekNext())) {
+    if (self.peek() == '.' and std.ascii.isDigit(self.peek2())) {
       // consume the '.'
       self.advance();
 
@@ -128,13 +126,9 @@ pub const Scanner = struct {
     return self.source[self.current];
   }
 
-  fn peekNext(self: *Self) u8 {
+  fn peek2(self: *Self) u8 {
     if (self.current + 1 >= self.source.len) return null;
     return self.source[self.current + 1];
-  }
-
-  fn isAlphaNumeric(char: u8) bool {
-    return std.ascii.isAlNum(char) or char == '_';
   }
 
   fn isAtEnd(self: *Self) bool {
@@ -155,5 +149,16 @@ pub const Scanner = struct {
       .literal = literal,
       .line = self.line,
     });
+  }
+
+  fn identifierType(value: []const u8) tokens.Kind {
+    for (tokens.keywords) |key| {
+      if (key.name == value) return key;
+    }
+    return .identifier;
+  }
+
+  fn isAlphaNumeric(char: u8) bool {
+    return std.ascii.isAlNum(char) or char == '_';
   }
 };
