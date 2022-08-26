@@ -3,12 +3,15 @@ const std = @import("std");
 pub const Token = struct {
   kind: Kind,
   lexeme: []const u8,
-  literal: struct {},
+  literal: ?Literal,
   line: usize,
 };
 
 pub const Literal = union(enum) {
-  None,
+  none,
+  identifier: []const u8,
+  string: []const u8,
+  number: f64,
 };
 
 pub const Kind = enum {

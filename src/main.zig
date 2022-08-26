@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const helpers = @import("./helpers.zig");
-const scanner = @import("./scanner.zig");
+const Scanner = @import("./scanner.zig").Scanner;
 
 const expect = std.testing.expect;
 const stderr = std.io.getStdErr().writer();
@@ -32,7 +32,7 @@ pub fn main() !void {
 fn runFile(allocator: std.mem.Allocator, path: []const u8) !void {
   const source = try std.fs.cwd().readFileAlloc(allocator, path, 1_000_000);
   defer allocator.free(source);
-  run(source);
+  try run(allocator, source);
 
   if (helpers.hadError) std.process.exit(65);
 }
@@ -42,7 +42,7 @@ fn repl(allocator: std.mem.Allocator) !void {
     try stdout.print("> ", .{});
     if (stdin.readUntilDelimiterOrEofAlloc(allocator, '\n', 255) catch null) |source| {
       defer allocator.free(source);
-      run(source);
+      try run(allocator, source);
       helpers.hadError = false;
     } else {
       break;
@@ -51,6 +51,15 @@ fn repl(allocator: std.mem.Allocator) !void {
   }
 }
 
-fn run(source: []const u8) void {
-  std.debug.print("{s}", .{ source });
+fn run(allocator: std.mem.Allocator, source: []const u8) !void {
+  var scanner = Scanner.init(allocator, source);
+  defer scanner.deinit();
+
+  const tokens = try scanner.scanTokens();
+
+  for (tokens) |token| {
+    std.debug.print("{s}\n", .{ @tagName(token.kind) });
+  }
+
+  defer allocator.free(tokens);
 }

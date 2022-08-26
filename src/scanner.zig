@@ -7,48 +7,61 @@ pub const Scanner = struct {
   const Self = @This();
 
   source: []const u8,
+  allocator: std.mem.Allocator,
   tokens: std.ArrayList(tokens.Token),
-  start: usize,
-  current: usize,
-  line: usize,
+  start: usize = 0,
+  current: usize = 0,
+  line: usize = 0,
 
-  pub fn scanTokens(self: *Self) std.ArrayList(tokens.Token) {
-    while (!self.isAtEnd()) {
-      self.start = self.current;
-      self.scanToken();
-    }
-
-    self.addToken(.eof);
-    return self.tokens;
+  pub fn init(allocator: std.mem.Allocator, source: []const u8) Scanner {
+    return Scanner{
+      .source = source,
+      .allocator = allocator,
+      .tokens = std.ArrayList(tokens.Token).init(allocator),
+    };
   }
 
-  fn scanToken(self: *Self) void {
+  pub fn deinit(self: *Self) void {
+    self.tokens.deinit();
+  }
+
+  pub fn scanTokens(self: *Self) ![]const tokens.Token {
+    while (!self.isAtEnd()) {
+      self.start = self.current;
+      try self.scanToken();
+    }
+
+    try self.addToken(.eof);
+    return self.tokens.toOwnedSlice();
+  }
+
+  fn scanToken(self: *Self) !void {
     const char = self.advance();
     // TODO: unroll into an expression
     switch (char) {
       // 1 char
-      '(' => self.addToken(.left_paren),
-      ')' => self.addToken(.right_paren),
-      '{' => self.addToken(.left_brace),
-      '}' => self.addToken(.right_brace),
-      ',' => self.addToken(.comma),
-      '.' => self.addToken(.dot),
-      '-' => self.addToken(.minus),
-      '+' => self.addToken(.plus),
-      ';' => self.addToken(.semicolon),
-      '*' => self.addToken(.star),
+      '(' => try self.addToken(.left_paren),
+      ')' => try self.addToken(.right_paren),
+      '{' => try self.addToken(.left_brace),
+      '}' => try self.addToken(.right_brace),
+      ',' => try self.addToken(.comma),
+      '.' => try self.addToken(.dot),
+      '-' => try self.addToken(.minus),
+      '+' => try self.addToken(.plus),
+      ';' => try self.addToken(.semicolon),
+      '*' => try self.addToken(.star),
 
       // 2 char
-      '!' => self.addToken(if (self.match('=')) .bang_equal else .bang),
-      '=' => self.addToken(if (self.match('=')) .equal_equal else .equal),
-      '<' => self.addToken(if (self.match('=')) .less_equal else .less),
-      '>' => self.addToken(if (self.match('=')) .greater_equal else .greater),
+      '!' => try self.addToken(if (self.match('=')) .bang_equal else .bang),
+      '=' => try self.addToken(if (self.match('=')) .equal_equal else .equal),
+      '<' => try self.addToken(if (self.match('=')) .less_equal else .less),
+      '>' => try self.addToken(if (self.match('=')) .greater_equal else .greater),
       '/' => {
         if (self.match('/')) {
           // a comment goes until the end of the line, pal
-          while (self.peek() != '\n' and !self.isAtEnd()) self.advance();
+          while (self.peek() != '\n' and !self.isAtEnd()) _ = self.advance();
         } else {
-          self.addToken(.slash);
+          try self.addToken(.slash);
         }
       },
 
@@ -59,9 +72,9 @@ pub const Scanner = struct {
       },
 
       // woke literals
-      '"' => self.string(),
-      '0'...'9' => self.number(),
-      'a'...'z', 'A'...'Z', '_' => self.identifier(),
+      '"' => try self.string(),
+      '0'...'9' => try self.number(),
+      'a'...'z', 'A'...'Z', '_' => try self.identifier(),
 
       else => {
         helpers.err(self.line, "Unexpected character.");
@@ -69,35 +82,35 @@ pub const Scanner = struct {
     }
   }
 
-  fn identifier(self: *Self) void {
-    while (isAlphaNumeric(self.peek())) self.advance();
+  fn identifier(self: *Self) !void {
+    while (isAlphaNumeric(self.peek())) _ = self.advance();
 
     // TODO: abstract getting current lexeme
     const text = self.source[self.start .. self.current];
     const kind: tokens.Kind = identifierType(text);
-    self.addToken(kind);
+    try self.addToken(kind);
   }
 
-  fn number(self: *Self) void {
-    while (std.ascii.isDigit(peek())) self.advance();
+  fn number(self: *Self) !void {
+    while (std.ascii.isDigit(self.peek())) _ = self.advance();
 
     // look for a fractional part
     if (self.peek() == '.' and std.ascii.isDigit(self.peek2())) {
       // consume the '.'
-      self.advance();
+      _ = self.advance();
 
-      while (std.ascii.isDigit(peek())) self.advance();
+      while (std.ascii.isDigit(self.peek())) _ = self.advance();
     }
 
-    const value = std.fmt.parseFloat(f64, self.source[self.start .. self.current]);
-    self.addToken(.number, value);
+    const value = try std.fmt.parseFloat(f64, self.source[self.start .. self.current]);
+    try self.addTokenLiteral(.number, tokens.Literal{ .number = value });
   }
 
-  fn string(self: *Self) void {
+  fn string(self: *Self) !void {
     while (self.peek() != '"' and !self.isAtEnd()) {
       // multiline strings
       if (self.peek() == '\n') self.line += 1;
-      self.advance();
+      _ = self.advance();
     }
 
     if (self.isAtEnd()) {
@@ -106,11 +119,11 @@ pub const Scanner = struct {
     }
 
     // the closing '"'
-    self.advance();
+    _ = self.advance();
 
     // trim the sourrounding quotes
     const value = self.source[self.start + 1 .. self.current - 1];
-    self.addToken(.string, value);
+    try self.addTokenLiteral(.string, tokens.Literal{ .string = value });
   }
 
   fn match(self: *Self, expected: u8) bool {
@@ -122,12 +135,12 @@ pub const Scanner = struct {
   }
 
   fn peek(self: *Self) u8 {
-    if (self.isAtEnd()) return null;
+    if (self.isAtEnd()) return 0;
     return self.source[self.current];
   }
 
   fn peek2(self: *Self) u8 {
-    if (self.current + 1 >= self.source.len) return null;
+    if (self.current + 1 >= self.source.len) return 0;
     return self.source[self.current + 1];
   }
 
@@ -141,9 +154,13 @@ pub const Scanner = struct {
     return char;
   }
 
-  fn addToken(self: *Self, kind: .Kind, literal: ?tokens.Literal) void {
+  fn addToken(self: *Self, kind: tokens.Kind) !void {
+    try self.addTokenLiteral(kind, null);
+  }
+
+  fn addTokenLiteral(self: *Self, kind: tokens.Kind, literal: ?tokens.Literal) !void {
     const text = self.source[self.start .. self.current];
-    self.tokens.append(tokens.Token{
+    try self.tokens.append(tokens.Token{
       .kind = kind,
       .lexeme = text,
       .literal = literal,
@@ -153,7 +170,7 @@ pub const Scanner = struct {
 
   fn identifierType(value: []const u8) tokens.Kind {
     for (tokens.keywords) |key| {
-      if (key.name == value) return key;
+      if (key == std.meta.stringToEnum(tokens.Kind, value)) return key;
     }
     return .identifier;
   }
@@ -162,3 +179,16 @@ pub const Scanner = struct {
     return std.ascii.isAlNum(char) or char == '_';
   }
 };
+
+test "scanner.init" {
+  var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+  const allocator = gpa.allocator();
+  _ = Scanner.init(allocator, "");
+}
+
+test "scanner.scanTokens" {
+  var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+  const allocator = gpa.allocator();
+  var scanner = Scanner.init(allocator, "");
+  _ = try scanner.scanTokens();
+}
