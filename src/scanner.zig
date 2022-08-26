@@ -88,7 +88,7 @@ pub const Scanner = struct {
     // TODO: abstract getting current lexeme
     const text = self.source[self.start .. self.current];
     const kind: tokens.Kind = identifierType(text);
-    try self.addToken(kind);
+    try self.addTokenLiteral(kind, tokens.Literal{ .identifier = text });
   }
 
   fn number(self: *Self) !void {
@@ -155,10 +155,10 @@ pub const Scanner = struct {
   }
 
   fn addToken(self: *Self, kind: tokens.Kind) !void {
-    try self.addTokenLiteral(kind, null);
+    try self.addTokenLiteral(kind, .none);
   }
 
-  fn addTokenLiteral(self: *Self, kind: tokens.Kind, literal: ?tokens.Literal) !void {
+  fn addTokenLiteral(self: *Self, kind: tokens.Kind, literal: tokens.Literal) !void {
     const text = self.source[self.start .. self.current];
     try self.tokens.append(tokens.Token{
       .kind = kind,

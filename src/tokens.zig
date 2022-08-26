@@ -3,7 +3,7 @@ const std = @import("std");
 pub const Token = struct {
   kind: Kind,
   lexeme: []const u8,
-  literal: ?Literal,
+  literal: Literal,
   line: usize,
 };
 

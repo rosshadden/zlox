@@ -58,7 +58,14 @@ fn run(allocator: std.mem.Allocator, source: []const u8) !void {
   const tokens = try scanner.scanTokens();
 
   for (tokens) |token| {
-    std.debug.print("{s}\n", .{ @tagName(token.kind) });
+    std.debug.print("{s}", .{ @tagName(token.kind) });
+    switch (token.literal) {
+      .identifier => std.debug.print(":\t{s}", .{ token.literal.identifier }),
+      .string => std.debug.print(":\t\"{s}\"", .{ token.literal.string }),
+      .number => std.debug.print(":\t{d}", .{ token.literal.number }),
+      else => {}
+    }
+    std.debug.print("\n", .{});
   }
 
   defer allocator.free(tokens);
