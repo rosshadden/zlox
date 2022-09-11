@@ -189,6 +189,6 @@ test "scanner.scanTokens" {
   var scanner = Scanner.init(std.testing.allocator, "");
   defer scanner.deinit();
 
-  var tok = try scanner.scanTokens();
+  const tok = try scanner.scanTokens();
   defer std.testing.allocator.free(tok);
 }
