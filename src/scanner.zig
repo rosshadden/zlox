@@ -181,14 +181,14 @@ pub const Scanner = struct {
 };
 
 test "scanner.init" {
-  var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-  const allocator = gpa.allocator();
-  _ = Scanner.init(allocator, "");
+  var scanner = Scanner.init(std.testing.allocator, "");
+  defer scanner.deinit();
 }
 
 test "scanner.scanTokens" {
-  var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-  const allocator = gpa.allocator();
-  var scanner = Scanner.init(allocator, "");
-  _ = try scanner.scanTokens();
+  var scanner = Scanner.init(std.testing.allocator, "");
+  defer scanner.deinit();
+
+  var tok = try scanner.scanTokens();
+  defer std.testing.allocator.free(tok);
 }
