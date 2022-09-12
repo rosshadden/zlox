@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const helpers = @import("./helpers.zig");
-const Scanner = @import("./scanner.zig").Scanner;
+const helpers = @import("./lib/helpers.zig");
+const Scanner = @import("./lib/scanner.zig").Scanner;
 
 const stderr = std.io.getStdErr().writer();
 const stdin = std.io.getStdIn().reader();
