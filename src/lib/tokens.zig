@@ -8,7 +8,7 @@ pub const Token = struct {
 };
 
 pub const Literal = union(enum) {
-  none,
+  nil,
   identifier: []const u8,
   string: []const u8,
   number: f64,

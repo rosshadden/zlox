@@ -155,7 +155,7 @@ pub const Scanner = struct {
   }
 
   fn addToken(self: *Self, kind: tokens.Kind) !void {
-    try self.addTokenLiteral(kind, .none);
+    try self.addTokenLiteral(kind, .nil);
   }
 
   fn addTokenLiteral(self: *Self, kind: tokens.Kind, literal: tokens.Literal) !void {
