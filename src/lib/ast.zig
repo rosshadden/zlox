@@ -47,9 +47,10 @@ test "ast literal nil" {
       .value = tokens.Literal.nil,
     },
   };
-  const w = std.io.getStdErr().writer();
-  try printAst(w, expr);
-  try w.print("\n", .{});
+  var list = std.ArrayList(u8).init(std.testing.allocator);
+  defer list.deinit();
+  try printAst(list.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, list.items, "nil"));
 }
 
 test "ast literal string" {
@@ -60,13 +61,10 @@ test "ast literal string" {
       },
     },
   };
-  const w = std.io.getStdErr().writer();
-  try printAst(w, expr);
-  try w.print("\n", .{});
-
-  // defer std.testing.allocator.free(ast);
-  // std.debug.print("\n{s}\n", .{ ast });
-  // try std.testing.expect(std.mem.eql(u8, ast, "lol"));
+  var list = std.ArrayList(u8).init(std.testing.allocator);
+  defer list.deinit();
+  try printAst(list.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, list.items, "lol"));
 }
 
 test "ast literal number" {
@@ -77,9 +75,10 @@ test "ast literal number" {
       },
     },
   };
-  const w = std.io.getStdErr().writer();
-  try printAst(w, expr);
-  try w.print("\n", .{});
+  var list = std.ArrayList(u8).init(std.testing.allocator);
+  defer list.deinit();
+  try printAst(list.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, list.items, "4"));
 }
 
 // test "ast unary" {
