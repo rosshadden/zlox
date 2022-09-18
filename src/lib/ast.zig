@@ -3,7 +3,7 @@ const std = @import("std");
 const expressions = @import("./expressions.zig");
 const tokens = @import("./tokens.zig");
 
-fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) !void {
+fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) error{OutOfMemory}!void {
   try w.print("(", .{});
   try w.print("{s}", .{ name });
   for (exprs) |expr| {
@@ -33,7 +33,9 @@ pub fn printAst(w: anytype, expr: expressions.Expr) !void {
         },
       }
     },
-    .unary => {},
+    .unary => {
+      try paren(w, expr.unary.operator.lexeme, &.{ expr.unary.right });
+    },
   }
 }
 
@@ -96,27 +98,27 @@ test "ast literal number" {
   try std.testing.expect(std.mem.eql(u8, result.items, "4"));
 }
 
-// test "ast unary" {
-//   const lit = expressions.Expr{
-//     .literal = .{
-//       .value = .{
-//         .string = "haha",
-//       },
-//     },
-//   };
-//   const expr = expressions.Expr{
-//     .unary = .{
-//       .operator = .{
-//         .kind = tokens.Kind.minus,
-//         .lexeme = "-",
-//         .literal = tokens.Literal.nil,
-//         .line = 1,
-//       },
-//       .right = &lit,
-//     },
-//   };
-//   var ast = printAst(expr);
-//   // defer std.testing.allocator.free(ast);
-//   std.debug.print("\n{s}\n", .{ ast });
-//   try std.testing.expect(std.mem.eql(u8, ast, "-haha"));
-// }
+test "ast unary" {
+  const lit = expressions.Expr{
+    .literal = .{
+      .value = .{
+        .number = 4,
+      },
+    },
+  };
+  const expr = expressions.Expr{
+    .unary = .{
+      .operator = .{
+        .kind = tokens.Kind.minus,
+        .lexeme = "-",
+        .literal = tokens.Literal.nil,
+        .line = 1,
+      },
+      .right = &lit,
+    },
+  };
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "(- 4)"));
+}
