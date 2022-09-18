@@ -172,5 +172,50 @@ test "ast grouping" {
   try std.testing.expect(std.mem.eql(u8, result.items, "(group 4)"));
 }
 
+test "main" {
+  const expr = expressions.Expr{
+    .binary = .{
+      .left = &expressions.Expr{
+        .unary = expressions.UnaryExpr{
+          .operator = .{
+            .kind = tokens.Kind.minus,
+            .lexeme = "-",
+            .literal = tokens.Literal.nil,
+            .line = 1,
+          },
+          .right = &expressions.Expr{
+            .literal = .{
+              .value = .{
+                .number = 123,
+              },
+            },
+          },
+        },
+      },
+      .operator = .{
+        .kind = tokens.Kind.star,
+        .lexeme = "*",
+        .literal = tokens.Literal.nil,
+        .line = 1,
+      },
+      .right = &expressions.Expr{
+        .grouping = .{
+          .expression = &expressions.Expr{
+            .literal = .{
+              .value = .{
+                .number = 45.67,
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "(* (- 123) (group 45.67))"));
+}
+
 test "" {
 }
