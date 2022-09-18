@@ -15,8 +15,10 @@ fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) e
 
 pub fn printAst(w: anytype, expr: expressions.Expr) !void {
   switch (expr) {
-    .binary => {},
     .grouping => {},
+    .binary => {
+      try paren(w, expr.binary.operator.lexeme, &.{ expr.binary.left, expr.binary.right });
+    },
     .literal => {
       switch (expr.literal.value) {
         .nil => {
@@ -121,4 +123,30 @@ test "ast unary" {
   defer result.deinit();
   try printAst(result.writer(), expr);
   try std.testing.expect(std.mem.eql(u8, result.items, "(- 4)"));
+}
+
+test "ast binary" {
+  const lit = expressions.Expr{
+    .literal = .{
+      .value = .{
+        .number = 4,
+      },
+    },
+  };
+  const expr = expressions.Expr{
+    .binary = .{
+      .left = &lit,
+      .operator = .{
+        .kind = tokens.Kind.equal_equal,
+        .lexeme = "==",
+        .literal = tokens.Literal.nil,
+        .line = 1,
+      },
+      .right = &lit,
+    },
+  };
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "(== 4 4)"));
 }
