@@ -3,14 +3,14 @@ const std = @import("std");
 const expressions = @import("./expressions.zig");
 const tokens = @import("./tokens.zig");
 
-fn paren(name: []const u8, exprs: []expressions.Expr) ![]const u8 {
-  var result = std.ArrayList(u8).init();
+fn paren(alc: std.mem.Allocator, name: []const u8, exprs: []const *const expressions.Expr) ![]const u8 {
+  var result = std.ArrayList(u8).init(alc);
 
   try result.append('(');
   try result.appendSlice(name);
   for (exprs) |expr| {
     try result.append(' ');
-    try result.appendSlice(printAst(expr));
+    try printAst(result.writer(), expr.*);
   }
   try result.append(')');
 
@@ -39,6 +39,23 @@ pub fn printAst(w: anytype, expr: expressions.Expr) !void {
     },
     .unary => {},
   }
+}
+
+test "paren empty" {
+  var result = try paren(std.testing.allocator, "foo", &.{});
+  defer std.testing.allocator.free(result);
+  try std.testing.expect(std.mem.eql(u8, result, "(foo)"));
+}
+
+test "paren" {
+  const expr = expressions.Expr{
+    .literal = .{
+      .value = tokens.Literal.nil,
+    },
+  };
+  var result = try paren(std.testing.allocator, "foo", &.{ &expr });
+  defer std.testing.allocator.free(result);
+  try std.testing.expect(std.mem.eql(u8, result, "(foo nil)"));
 }
 
 test "ast literal nil" {
