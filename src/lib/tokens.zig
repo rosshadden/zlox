@@ -40,3 +40,6 @@ pub const keywords = [_]Kind{
   .@"and", .@"class", .@"else", .@"false", .@"fun", .@"for", .@"if", .@"nil", .@"or",
   .@"print", .@"return", .@"super", .@"this", .@"true", .@"var", .@"while",
 };
+
+test "" {
+}

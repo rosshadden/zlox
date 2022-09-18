@@ -27,3 +27,6 @@ pub const UnaryExpr = struct {
 pub const GroupingExpr = struct {
   expression: *const Expr,
 };
+
+test "" {
+}

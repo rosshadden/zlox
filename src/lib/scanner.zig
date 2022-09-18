@@ -192,3 +192,6 @@ test "scanner.scanTokens" {
   const tok = try scanner.scanTokens();
   defer std.testing.allocator.free(tok);
 }
+
+test "" {
+}
