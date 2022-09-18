@@ -30,7 +30,7 @@ pub fn printAst(w: anytype, expr: expressions.Expr) !void {
           try w.print("{s}", .{ expr.literal.value.identifier });
         },
         .string => {
-          try w.print("{s}", .{ expr.literal.value.string });
+          try w.print("\"{s}\"", .{ expr.literal.value.string });
         },
         .number => {
           try w.print("{d}", .{ expr.literal.value.number });
@@ -85,7 +85,7 @@ test "ast literal string" {
   var result = std.ArrayList(u8).init(std.testing.allocator);
   defer result.deinit();
   try printAst(result.writer(), expr);
-  try std.testing.expect(std.mem.eql(u8, result.items, "lol"));
+  try std.testing.expect(std.mem.eql(u8, result.items, "\"lol\""));
 }
 
 test "ast literal number" {
