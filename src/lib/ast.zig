@@ -3,18 +3,14 @@ const std = @import("std");
 const expressions = @import("./expressions.zig");
 const tokens = @import("./tokens.zig");
 
-fn paren(alc: std.mem.Allocator, name: []const u8, exprs: []const *const expressions.Expr) ![]const u8 {
-  var result = std.ArrayList(u8).init(alc);
-
-  try result.append('(');
-  try result.appendSlice(name);
+fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) !void {
+  try w.print("(", .{});
+  try w.print("{s}", .{ name });
   for (exprs) |expr| {
-    try result.append(' ');
-    try printAst(result.writer(), expr.*);
+    try w.print(" ", .{});
+    try printAst(w, expr.*);
   }
-  try result.append(')');
-
-  return result.toOwnedSlice();
+  try w.print(")", .{});
 }
 
 pub fn printAst(w: anytype, expr: expressions.Expr) !void {
@@ -42,20 +38,22 @@ pub fn printAst(w: anytype, expr: expressions.Expr) !void {
 }
 
 test "paren empty" {
-  var result = try paren(std.testing.allocator, "foo", &.{});
-  defer std.testing.allocator.free(result);
-  try std.testing.expect(std.mem.eql(u8, result, "(foo)"));
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try paren(result.writer(), "foo", &.{});
+  try std.testing.expect(std.mem.eql(u8, result.items, "(foo)"));
 }
 
-test "paren" {
+test "paren nil" {
   const expr = expressions.Expr{
     .literal = .{
       .value = tokens.Literal.nil,
     },
   };
-  var result = try paren(std.testing.allocator, "foo", &.{ &expr });
-  defer std.testing.allocator.free(result);
-  try std.testing.expect(std.mem.eql(u8, result, "(foo nil)"));
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try paren(result.writer(), "foo", &.{ &expr });
+  try std.testing.expect(std.mem.eql(u8, result.items, "(foo nil)"));
 }
 
 test "ast literal nil" {
@@ -64,10 +62,10 @@ test "ast literal nil" {
       .value = tokens.Literal.nil,
     },
   };
-  var list = std.ArrayList(u8).init(std.testing.allocator);
-  defer list.deinit();
-  try printAst(list.writer(), expr);
-  try std.testing.expect(std.mem.eql(u8, list.items, "nil"));
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "nil"));
 }
 
 test "ast literal string" {
@@ -78,10 +76,10 @@ test "ast literal string" {
       },
     },
   };
-  var list = std.ArrayList(u8).init(std.testing.allocator);
-  defer list.deinit();
-  try printAst(list.writer(), expr);
-  try std.testing.expect(std.mem.eql(u8, list.items, "lol"));
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "lol"));
 }
 
 test "ast literal number" {
@@ -92,10 +90,10 @@ test "ast literal number" {
       },
     },
   };
-  var list = std.ArrayList(u8).init(std.testing.allocator);
-  defer list.deinit();
-  try printAst(list.writer(), expr);
-  try std.testing.expect(std.mem.eql(u8, list.items, "4"));
+  var result = std.ArrayList(u8).init(std.testing.allocator);
+  defer result.deinit();
+  try printAst(result.writer(), expr);
+  try std.testing.expect(std.mem.eql(u8, result.items, "4"));
 }
 
 // test "ast unary" {
