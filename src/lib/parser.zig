@@ -24,28 +24,96 @@ pub const Parser = struct {
   }
 
   fn equality(self: *Self) *expressions.Expr {
-    const expr = self.comparison();
+    var expr = self.comparison();
+    const kinds = &.{
+      tokens.Kind.bang_equal, tokens.Kind.equal_equal,
+    };
+    while (self.match(kinds)) {
+      const operator = self.previous();
+      const right = self.comparison();
+      expr = expressions.Expr{
+        .binary = .{
+          .left = expr,
+          .operator = operator,
+          .right = right,
+        },
+      };
+    }
     return expr;
   }
 
   fn comparison(self: *Self) *expressions.Expr {
-    const expr = self.term();
+    var expr = self.term();
+    const kinds = &.{
+      tokens.Kind.greater, tokens.Kind.greater_equal, tokens.Kind.less, tokens.Kind.less_equal,
+    };
+    while (self.match(kinds)) {
+      const operator = self.previous();
+      const right = self.term();
+      expr = expressions.Expr{
+        .binary = .{
+          .left = expr,
+          .operator = operator,
+          .right = right,
+        },
+      };
+    }
     return expr;
   }
 
   fn term(self: *Self) *expressions.Expr {
-    const expr = self.factor();
+    var expr = self.factor();
+    const kinds = &.{
+      tokens.Kind.minus, tokens.Kind.plus,
+    };
+    while (self.match(kinds)) {
+      const operator = self.previous();
+      const right = self.factor();
+      expr = expressions.Expr{
+        .binary = .{
+          .left = expr,
+          .operator = operator,
+          .right = right,
+        },
+      };
+    }
     return expr;
   }
 
   fn factor(self: *Self) *expressions.Expr {
-    const expr = self.unary();
+    var expr = self.unary();
+    const kinds = &.{
+      tokens.Kind.slash, tokens.Kind.star,
+    };
+    while (self.match(kinds)) {
+      const operator = self.previous();
+      const right = self.unary();
+      expr = expressions.Expr{
+        .binary = .{
+          .left = expr,
+          .operator = operator,
+          .right = right,
+        },
+      };
+    }
     return expr;
   }
 
   fn unary(self: *Self) *expressions.Expr {
-    const expr = self.primary();
-    return expr;
+    const kinds = &.{
+      tokens.Kind.bang, tokens.Kind.minus,
+    };
+    if (self.match(kinds)) {
+      const operator = self.previous();
+      const right = self.unary();
+      return expressions.Expr{
+        .unary = .{
+          .operator = operator,
+          .right = right,
+        },
+      };
+    }
+    return self.primary();
   }
 
   fn primary(_: *Self) *expressions.Expr {
@@ -56,25 +124,36 @@ pub const Parser = struct {
     };
   }
 
-  fn match(_: *Self) bool {
+  fn match(self: *Self, kinds: []tokens.Kind) bool {
+    for (kinds) |kind| {
+      if (self.check(kind)) {
+        self.advance();
+        return true;
+      }
+    }
     return false;
   }
 
-  fn check(_: *Self) bool {
-    return false;
+  fn check(self: *Self, kind: tokens.Kind) bool {
+    if (self.isAtEnd()) return false;
+    return self.peek().kind == kind;
   }
 
-  fn advance(_: *Self) void {
+  fn advance(self: *Self) tokens.Token {
+    if (!self.isAtEnd()) self.current += 1;
+    return self.previous();
   }
 
-  fn isAtEnd(_: *Self) bool {
-    return true;
+  fn isAtEnd(self: *Self) bool {
+    return self.peek().kind == tokens.Kind.eof;
   }
 
-  fn peek(_: *Self) void {
+  fn peek(self: *Self) tokens.Token {
+    return self.tokens[self.current];
   }
 
-  fn previous(_: *Self) void {
+  fn previous(self: *Self) tokens.Token {
+    return self.tokens[self.current - 1];
   }
 };
 
