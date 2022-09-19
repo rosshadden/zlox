@@ -13,8 +13,8 @@ pub const Scanner = struct {
   current: usize = 0,
   line: usize = 0,
 
-  pub fn init(allocator: std.mem.Allocator, source: []const u8) Scanner {
-    return Scanner{
+  pub fn init(allocator: std.mem.Allocator, source: []const u8) Self {
+    return .{
       .source = source,
       .allocator = allocator,
       .tokens = std.ArrayList(tokens.Token).init(allocator),
@@ -180,12 +180,12 @@ pub const Scanner = struct {
   }
 };
 
-test "scanner.init" {
+test "init" {
   var scanner = Scanner.init(std.testing.allocator, "");
   defer scanner.deinit();
 }
 
-test "scanner.scanTokens" {
+test "scanTokens" {
   var scanner = Scanner.init(std.testing.allocator, "");
   defer scanner.deinit();
 
