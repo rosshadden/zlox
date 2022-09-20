@@ -20,7 +20,7 @@ pub const Parser = struct {
 
   pub fn deinit(_: *Self) void {}
 
-  fn parse(self: *Self) *expressions.Expr {
+  pub fn parse(self: *Self) *expressions.Expr {
     return self.expression() catch {
       return null;
     };

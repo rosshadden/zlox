@@ -1,7 +1,9 @@
 const std = @import("std");
 
-const helpers = @import("./lib/helpers.zig");
+const Parser = @import("./lib/parser.zig").Parser;
 const Scanner = @import("./lib/scanner.zig").Scanner;
+const ast = @import("./lib/ast.zig");
+const helpers = @import("./lib/helpers.zig");
 
 const stderr = std.io.getStdErr().writer();
 const stdin = std.io.getStdIn().reader();
@@ -57,14 +59,21 @@ fn run(alc: std.mem.Allocator, source: []const u8) !void {
   const tokens = try scanner.scanTokens();
   defer alc.free(tokens);
 
-  for (tokens) |token| {
-    std.debug.print("{s}", .{ @tagName(token.kind) });
-    switch (token.literal) {
-      .identifier => std.debug.print(":\t{s}", .{ token.literal.identifier }),
-      .string => std.debug.print(":\t\"{s}\"", .{ token.literal.string }),
-      .number => std.debug.print(":\t{d}", .{ token.literal.number }),
-      else => {}
-    }
-    std.debug.print("\n", .{});
-  }
+  const parser = Parser.init(alc, tokens);
+  const expr = parser.parse();
+
+  if (helpers.hadError) return;
+
+  ast.printAst(std.io.getStdErr().writer(), expr);
+
+  // for (tokens) |token| {
+  //   std.debug.print("{s}", .{ @tagName(token.kind) });
+  //   switch (token.literal) {
+  //     .identifier => std.debug.print(":\t{s}", .{ token.literal.identifier }),
+  //     .string => std.debug.print(":\t\"{s}\"", .{ token.literal.string }),
+  //     .number => std.debug.print(":\t{d}", .{ token.literal.number }),
+  //     else => {}
+  //   }
+  //   std.debug.print("\n", .{});
+  // }
 }
