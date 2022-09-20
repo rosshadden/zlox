@@ -2,6 +2,7 @@ const std = @import("std");
 
 const expressions = @import("./expressions.zig");
 const tokens = @import("./tokens.zig");
+const helpers = @import("./helpers.zig");
 
 pub const Parser = struct {
   const Self = @This();
@@ -18,6 +19,12 @@ pub const Parser = struct {
   }
 
   pub fn deinit(_: *Self) void {}
+
+  fn parse(self: *Self) *expressions.Expr {
+    return self.expression() catch {
+      return null;
+    };
+  }
 
   fn expression(self: *Self) *expressions.Expr {
     return self.equality();
@@ -116,12 +123,50 @@ pub const Parser = struct {
     return self.primary();
   }
 
-  fn primary(_: *Self) *expressions.Expr {
-    return expressions.Expr{
-      .literal = .{
-        .value = tokens.Literal.nil,
-      },
-    };
+  fn primary(self: *Self) *expressions.Expr {
+    if (self.match(&.{ tokens.Kind.@"false" })) {
+      return expressions.Expr{ .literal = .{ .value = .{ .boolean = false } } };
+    }
+    if (self.match(&.{ tokens.Kind.@"true" })) {
+      return expressions.Expr{ .literal = .{ .value = .{ .boolean = true } } };
+    }
+    if (self.match(&.{ tokens.Kind.@"nil" })) {
+      return expressions.Expr{ .literal = .{ .value = .nil } };
+    }
+
+    if (self.match(&.{ tokens.Kind.number })) {
+      if (self.previous().literal) |lit| {
+        switch (lit) {
+          .number => |n| {
+            return expressions.Expr{ .literal = .{ .value = .{ .number = n } } };
+          },
+          else => unreachable,
+        }
+      } else {
+        unreachable;
+      }
+    }
+
+    if (self.match(&.{ tokens.Kind.string })) {
+      if (self.previous().literal) |lit| {
+        switch (lit) {
+          .string => |s| {
+            return expressions.Expr{ .literal = .{ .value = .{ .string = s } } };
+          },
+          else => unreachable,
+        }
+      } else {
+        unreachable;
+      }
+    }
+
+    if (self.match(&.{ tokens.Kind.left_paren })) {
+      var expr = self.expression();
+      self.consume(tokens.Kind.right_paren, "Expect ')' after expression.");
+      return expressions.Expr{ .grouping = .{ .expression = expr } };
+    }
+
+    return err(self.peek(), "Expect expression.");
   }
 
   fn match(self: *Self, kinds: []tokens.Kind) bool {
@@ -132,6 +177,11 @@ pub const Parser = struct {
       }
     }
     return false;
+  }
+
+  fn consume(self: *Self, kind: tokens.Kind, message: []const u8) tokens.Token {
+    if (self.check(kind)) return self.advance();
+    return err(self.peek(), message);
   }
 
   fn check(self: *Self, kind: tokens.Kind) bool {
@@ -149,11 +199,39 @@ pub const Parser = struct {
   }
 
   fn peek(self: *Self) tokens.Token {
-    return self.tokens[self.current];
+    return self.tokens.items[self.current];
   }
 
   fn previous(self: *Self) tokens.Token {
-    return self.tokens[self.current - 1];
+    return self.tokens.items[self.current - 1];
+  }
+
+  fn synchronize(self: *Self) void {
+    self.advance();
+
+    while (!self.isAtEnd()) {
+      if (self.previous().kind == tokens.Kind.semicolon) return;
+
+      switch (self.peek().kind) {
+        tokens.Kind.@"class" => return,
+        tokens.Kind.@"fun" => return,
+        tokens.Kind.@"var" => return,
+        tokens.Kind.@"for" => return,
+        tokens.Kind.@"if" => return,
+        tokens.Kind.@"while" => return,
+        tokens.Kind.@"print" => return,
+        tokens.Kind.@"return" => return,
+        else => {},
+      }
+
+      self.advance();
+    }
+  }
+
+  // @error
+  fn err(token: tokens.Token, message: []const u8) error{ParseError} {
+    helpers.errorToken(token, message);
+    return error.ParseError;
   }
 };
 
@@ -162,7 +240,6 @@ test "init" {
   defer tkns.deinit();
   var parser = Parser.init(std.testing.allocator, tkns);
   defer parser.deinit();
-  std.debug.print("{}\n", .{ parser.current });
 }
 
 test "" {

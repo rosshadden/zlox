@@ -7,13 +7,16 @@ pub const Token = struct {
   line: usize,
 };
 
+// TODO: move inside Token
 pub const Literal = union(enum) {
   nil,
+  boolean: bool,
+  number: f64,
   identifier: []const u8,
   string: []const u8,
-  number: f64,
 };
 
+// TODO: move inside Token
 pub const Kind = enum {
   // 1 char
   left_paren, right_paren,
@@ -36,6 +39,7 @@ pub const Kind = enum {
   eof,
 };
 
+// TODO: move inside Token
 pub const keywords = [_]Kind{
   .@"and", .@"class", .@"else", .@"false", .@"fun", .@"for", .@"if", .@"nil", .@"or",
   .@"print", .@"return", .@"super", .@"this", .@"true", .@"var", .@"while",

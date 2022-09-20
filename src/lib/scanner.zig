@@ -77,7 +77,7 @@ pub const Scanner = struct {
       'a'...'z', 'A'...'Z', '_' => try self.identifier(),
 
       else => {
-        helpers.err(self.line, "Unexpected character.");
+        helpers.errorLine(self.line, "Unexpected character.");
       }
     }
   }
@@ -114,7 +114,7 @@ pub const Scanner = struct {
     }
 
     if (self.isAtEnd()) {
-      helpers.err(self.line, "Unterminated string.");
+      helpers.errorLine(self.line, "Unterminated string.");
       return;
     }
 
