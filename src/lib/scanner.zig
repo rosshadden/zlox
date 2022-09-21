@@ -25,14 +25,14 @@ pub const Scanner = struct {
     self.tokens.deinit();
   }
 
-  pub fn scanTokens(self: *Self) ![]const tokens.Token {
+  pub fn scanTokens(self: *Self) !std.ArrayList(tokens.Token) {
     while (!self.isAtEnd()) {
       self.start = self.current;
       try self.scanToken();
     }
 
     try self.addToken(.eof);
-    return self.tokens.toOwnedSlice();
+    return self.tokens;
   }
 
   fn scanToken(self: *Self) !void {
@@ -189,8 +189,7 @@ test "scanTokens" {
   var scanner = Scanner.init(std.testing.allocator, "");
   defer scanner.deinit();
 
-  const tok = try scanner.scanTokens();
-  defer std.testing.allocator.free(tok);
+  _ = try scanner.scanTokens();
 }
 
 test "" {

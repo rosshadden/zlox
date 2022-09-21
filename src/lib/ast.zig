@@ -13,8 +13,8 @@ fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) e
   try w.print(")", .{});
 }
 
-pub fn printAst(w: anytype, expr: expressions.Expr) !void {
-  switch (expr) {
+pub fn printAst(w: anytype, expr: *expressions.Expr) !void {
+  switch (expr.*) {
     .binary => {
       try paren(w, expr.binary.operator.lexeme, &.{ expr.binary.left, expr.binary.right });
     },
@@ -26,14 +26,17 @@ pub fn printAst(w: anytype, expr: expressions.Expr) !void {
         .nil => {
           try w.print("nil", .{});
         },
+        .boolean => {
+          try w.print("{}", .{ expr.literal.value.boolean });
+        },
+        .number => {
+          try w.print("{d}", .{ expr.literal.value.number });
+        },
         .identifier => {
           try w.print("{s}", .{ expr.literal.value.identifier });
         },
         .string => {
           try w.print("\"{s}\"", .{ expr.literal.value.string });
-        },
-        .number => {
-          try w.print("{d}", .{ expr.literal.value.number });
         },
       }
     },

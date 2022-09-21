@@ -59,12 +59,12 @@ fn run(alc: std.mem.Allocator, source: []const u8) !void {
   const tokens = try scanner.scanTokens();
   defer alc.free(tokens);
 
-  const parser = Parser.init(alc, tokens);
+  var parser = Parser.init(alc, tokens);
   const expr = parser.parse();
 
   if (helpers.hadError) return;
 
-  ast.printAst(std.io.getStdErr().writer(), expr);
+  try ast.printAst(std.io.getStdErr().writer(), expr);
 
   // for (tokens) |token| {
   //   std.debug.print("{s}", .{ @tagName(token.kind) });
