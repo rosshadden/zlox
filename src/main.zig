@@ -3,6 +3,7 @@ const std = @import("std");
 const Parser = @import("./lib/parser.zig").Parser;
 const Scanner = @import("./lib/scanner.zig").Scanner;
 const ast = @import("./lib/ast.zig");
+const expressions = @import("./lib/expressions.zig");
 const helpers = @import("./lib/helpers.zig");
 
 const stderr = std.io.getStdErr().writer();
@@ -57,14 +58,19 @@ fn run(alc: std.mem.Allocator, source: []const u8) !void {
   defer scanner.deinit();
 
   const tokens = try scanner.scanTokens();
-  defer alc.free(tokens);
+  // defer tokens.deinit();
 
   var parser = Parser.init(alc, tokens);
-  const expr = parser.parse();
+  defer parser.deinit();
+
+  // TOOD: wtf
+  _ = try parser.parse();
+  // const expr = try parser.parse();
 
   if (helpers.hadError) return;
 
-  try ast.printAst(std.io.getStdErr().writer(), expr);
+  // try ast.printAst(std.io.getStdErr().writer(), expr);
+  // ast.printAst(std.io.getStdErr().writer(), &expr);
 
   // for (tokens) |token| {
   //   std.debug.print("{s}", .{ @tagName(token.kind) });

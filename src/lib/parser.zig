@@ -7,6 +7,8 @@ const helpers = @import("./helpers.zig");
 pub const Parser = struct {
   const Self = @This();
 
+  const Error = error{ ParseError, OutOfMemory };
+
   allocator: std.mem.Allocator,
   tokens: std.ArrayList(tokens.Token),
   current: usize = 0,
@@ -20,25 +22,23 @@ pub const Parser = struct {
 
   pub fn deinit(_: *Self) void {}
 
-  pub fn parse(self: *Self) *expressions.Expr {
-    return self.expression() catch {
-      return null;
-    };
+  pub fn parse(self: *Self) !*expressions.Expr {
+    return try self.expression();
   }
 
-  fn expression(self: *Self) *expressions.Expr {
-    return self.equality();
+  fn expression(self: *Self) !*expressions.Expr {
+    return try self.equality();
   }
 
-  fn equality(self: *Self) *expressions.Expr {
-    var expr = self.comparison();
+  fn equality(self: *Self) !*expressions.Expr {
+    var expr = try self.comparison();
     const kinds = &.{
       tokens.Kind.bang_equal, tokens.Kind.equal_equal,
     };
     while (self.match(kinds)) {
       const operator = self.previous();
-      const right = self.comparison();
-      expr = expressions.Expr{
+      const right = try self.comparison();
+      expr.* = expressions.Expr{
         .binary = .{
           .left = expr,
           .operator = operator,
@@ -49,15 +49,15 @@ pub const Parser = struct {
     return expr;
   }
 
-  fn comparison(self: *Self) *expressions.Expr {
-    var expr = self.term();
+  fn comparison(self: *Self) !*expressions.Expr {
+    var expr = try self.term();
     const kinds = &.{
       tokens.Kind.greater, tokens.Kind.greater_equal, tokens.Kind.less, tokens.Kind.less_equal,
     };
     while (self.match(kinds)) {
       const operator = self.previous();
-      const right = self.term();
-      expr = expressions.Expr{
+      const right = try self.term();
+      expr.* = expressions.Expr{
         .binary = .{
           .left = expr,
           .operator = operator,
@@ -68,15 +68,15 @@ pub const Parser = struct {
     return expr;
   }
 
-  fn term(self: *Self) *expressions.Expr {
-    var expr = self.factor();
+  fn term(self: *Self) !*expressions.Expr {
+    var expr = try self.factor();
     const kinds = &.{
       tokens.Kind.minus, tokens.Kind.plus,
     };
     while (self.match(kinds)) {
       const operator = self.previous();
-      const right = self.factor();
-      expr = expressions.Expr{
+      const right = try self.factor();
+      expr.* = expressions.Expr{
         .binary = .{
           .left = expr,
           .operator = operator,
@@ -87,15 +87,15 @@ pub const Parser = struct {
     return expr;
   }
 
-  fn factor(self: *Self) *expressions.Expr {
-    var expr = self.unary();
+  fn factor(self: *Self) !*expressions.Expr {
+    var expr = try self.unary();
     const kinds = &.{
       tokens.Kind.slash, tokens.Kind.star,
     };
     while (self.match(kinds)) {
       const operator = self.previous();
-      const right = self.unary();
-      expr = expressions.Expr{
+      const right = try self.unary();
+      expr.* = expressions.Expr{
         .binary = .{
           .left = expr,
           .operator = operator,
@@ -106,80 +106,78 @@ pub const Parser = struct {
     return expr;
   }
 
-  fn unary(self: *Self) *expressions.Expr {
+  fn unary(self: *Self) Error!*expressions.Expr {
     const kinds = &.{
       tokens.Kind.bang, tokens.Kind.minus,
     };
     if (self.match(kinds)) {
       const operator = self.previous();
-      const right = self.unary();
-      return expressions.Expr{
+      const right = try self.unary();
+      return &expressions.Expr{
         .unary = .{
           .operator = operator,
           .right = right,
         },
       };
     }
-    return self.primary();
+    return try self.primary();
   }
 
-  fn primary(self: *Self) *expressions.Expr {
+  fn primary(self: *Self) !*expressions.Expr {
+    var expr = try self.allocator.create(expressions.Expr);
     if (self.match(&.{ tokens.Kind.@"false" })) {
-      return expressions.Expr{ .literal = .{ .value = .{ .boolean = false } } };
+      expr.* = expressions.Expr{ .literal = .{ .value = .{ .boolean = false } } };
+      return expr;
     }
     if (self.match(&.{ tokens.Kind.@"true" })) {
-      return expressions.Expr{ .literal = .{ .value = .{ .boolean = true } } };
+      expr.* = expressions.Expr{ .literal = .{ .value = .{ .boolean = true } } };
+      return expr;
     }
     if (self.match(&.{ tokens.Kind.@"nil" })) {
-      return expressions.Expr{ .literal = .{ .value = .nil } };
+      expr.* = expressions.Expr{ .literal = .{ .value = .nil } };
+      return expr;
     }
 
     if (self.match(&.{ tokens.Kind.number })) {
-      if (self.previous().literal) |lit| {
-        switch (lit) {
-          .number => |n| {
-            return expressions.Expr{ .literal = .{ .value = .{ .number = n } } };
-          },
-          else => unreachable,
-        }
-      } else {
-        unreachable;
+      switch (self.previous().literal) {
+        .number => |n| {
+          return &expressions.Expr{ .literal = .{ .value = .{ .number = n } } };
+        },
+        else => unreachable,
       }
     }
 
     if (self.match(&.{ tokens.Kind.string })) {
-      if (self.previous().literal) |lit| {
-        switch (lit) {
-          .string => |s| {
-            return expressions.Expr{ .literal = .{ .value = .{ .string = s } } };
-          },
-          else => unreachable,
-        }
-      } else {
-        unreachable;
+      switch (self.previous().literal) {
+        .string => |s| {
+          return &expressions.Expr{ .literal = .{ .value = .{ .string = s } } };
+        },
+        else => unreachable,
       }
     }
 
     if (self.match(&.{ tokens.Kind.left_paren })) {
-      var expr = self.expression();
-      self.consume(tokens.Kind.right_paren, "Expect ')' after expression.");
-      return expressions.Expr{ .grouping = .{ .expression = expr } };
+      expr = try self.expression();
+      _ = self.consume(tokens.Kind.right_paren, "Expect ')' after expression.") catch |err| {
+        return err;
+      };
+      return &expressions.Expr{ .grouping = .{ .expression = expr } };
     }
 
     return err(self.peek(), "Expect expression.");
   }
 
-  fn match(self: *Self, kinds: []tokens.Kind) bool {
+  fn match(self: *Self, kinds: []const tokens.Kind) bool {
     for (kinds) |kind| {
       if (self.check(kind)) {
-        self.advance();
+        _ = self.advance();
         return true;
       }
     }
     return false;
   }
 
-  fn consume(self: *Self, kind: tokens.Kind, message: []const u8) tokens.Token {
+  fn consume(self: *Self, kind: tokens.Kind, message: []const u8) Error!tokens.Token {
     if (self.check(kind)) return self.advance();
     return err(self.peek(), message);
   }
@@ -229,7 +227,7 @@ pub const Parser = struct {
   }
 
   // @error
-  fn err(token: tokens.Token, message: []const u8) error{ParseError} {
+  fn err(token: tokens.Token, message: []const u8) Error {
     helpers.errorToken(token, message);
     return error.ParseError;
   }

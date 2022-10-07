@@ -19,6 +19,12 @@ pub fn errorToken(token: tokens.Token, message: []const u8) void {
   if (token.kind == tokens.Kind.eof) {
     report(token.line, " at end", message);
   } else {
-    report(token.line, " at '" + token.lexeme + "'", message);
+    const b_len = 32;
+    var b: [b_len]u8 = undefined;
+    const where = std.fmt.bufPrint(&b, "at '{s}'", .{ token.lexeme }) catch blk: {
+      std.mem.copy(u8, b[b_len - 3 ..], "..'");
+      break :blk &b;
+    };
+    report(token.line, where, message);
   }
 }
