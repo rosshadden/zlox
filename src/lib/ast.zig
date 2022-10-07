@@ -3,17 +3,16 @@ const std = @import("std");
 const expressions = @import("./expressions.zig");
 const tokens = @import("./tokens.zig");
 
-fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) error{OutOfMemory}!void {
-  try w.print("(", .{});
-  try w.print("{s}", .{ name });
+fn paren(w: anytype, name: []const u8, exprs: []const *const expressions.Expr) anyerror!void {
+  try w.print("({s}", .{ name });
   for (exprs) |expr| {
     try w.print(" ", .{});
-    try printAst(w, expr.*);
+    try printAst(w, expr);
   }
   try w.print(")", .{});
 }
 
-pub fn printAst(w: anytype, expr: *expressions.Expr) !void {
+pub fn printAst(w: anytype, expr: *const expressions.Expr) !void {
   switch (expr.*) {
     .binary => {
       try paren(w, expr.binary.operator.lexeme, &.{ expr.binary.left, expr.binary.right });

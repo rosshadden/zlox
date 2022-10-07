@@ -64,13 +64,11 @@ fn run(alc: std.mem.Allocator, source: []const u8) !void {
   defer parser.deinit();
 
   // TOOD: wtf
-  _ = try parser.parse();
-  // const expr = try parser.parse();
+  const expr = try parser.parse();
 
   if (helpers.hadError) return;
 
-  // try ast.printAst(std.io.getStdErr().writer(), expr);
-  // ast.printAst(std.io.getStdErr().writer(), &expr);
+  try ast.printAst(std.io.getStdErr().writer(), expr);
 
   // for (tokens) |token| {
   //   std.debug.print("{s}", .{ @tagName(token.kind) });
